@@ -11,30 +11,11 @@
 #include "World.h"
 
 
-//DDA algorithm to check if line intersects blocked area 
+//Uses DDA algorithm to check if line intersects blocked area
+//DDA (Digital Differential Analyzer) takes two points and calculates
+//series of points along their line segment 
 //returns true if clear, false if collision  
 bool validTrajectory(Node* nodeA, Node* nodeB, World world){
-	// //std::cout << "validTrajectory()" << nodeA->x << ' ' << nodeA->y << " to " << nodeB->x << ' ' << nodeB->y << std::endl; 
-	// double dx = abs(nodeA->x - nodeB->x);
-	// double dy = abs(nodeA->y - nodeB->y); 
-	// // int steps = abs(dx) > abs(dy) ? abs(dx) : abs(dy);
-	// double steps = 500;  
-	// // calculate increment in x & y for each steps 
-	// double Xinc = dx / steps; 
-	// double Yinc = dy / steps; 
-	// // Put pixel for each step 
-	// double curX = nodeA->x;
-	// double curY = nodeA->y; 
-	// for( int i = 0; i <= steps; i++ ){ 
-	// 	if(world.world[(int(curY)*world.width)+int(curX)] == '#'){
-	// 		//std::cout << "COLLISON" << std::endl;
-	// 		return 0; 
-	// 	}
-	// 	curX += Xinc;//increment in x at each step 
-	// 	curY += Yinc;//increment in y at each step 
-	// } 
-	// return 1; 
-
   double step,x,y;
   double x1 = nodeA->x;
   double y1 = nodeA->y;
@@ -43,9 +24,9 @@ bool validTrajectory(Node* nodeA, Node* nodeB, World world){
   double dx = (x2 - x1);
   double dy = (y2 - y1);
   if(abs(dx) >= abs(dy))
-    step = abs(dx)*100;
+    step = abs(dx)*500;
   else
-    step = abs(dy)*100;
+    step = abs(dy)*500;
   dx = dx / step;
   dy = dy / step;
   x = x1;
@@ -56,7 +37,6 @@ bool validTrajectory(Node* nodeA, Node* nodeB, World world){
     y = y + dy;
     i = i + 1;
 	if(world.world[(int(y)*world.width)+int(x)] == '#'){
-		//std::cout << "COLLISON" << std::endl;
 		return 0; 
 	}
   }
@@ -70,13 +50,26 @@ double distance(Node* nodeA, Node* nodeB){
 	return hypot(diffX, diffY);
 }
 
+//calculates distance of a node from root 
+double depth(Node* node){
+	if(node->parent == NULL){
+		return 0.0; //root
+	}
+	return distance(node, node->parent) + depth(node->parent);
+}
+
+//calculates depth if a node if its parent was givenParent 
+double testDepth(Node* node, Node* givenParent){
+	return distance(node, givenParent) + depth(givenParent); 
+}
+
 //return the nearest existing node to a given node in the world 
 //simple euclidean distence per pythagorean theorm used by distance() 
 //O(n) compares all nodes and saves returns closest 
-Node* nearestNeighbor(Node* node, std::vector<Node*> neighborhood){
+Node* nearestNeighbor(Node* node, std::vector<Node*> exploredNodes){
 	Node* nearest;
 	double nearestDist = INFINITY;  
-	for(Node* n : neighborhood){
+	for(Node* n : exploredNodes){
 		double dist = distance(node, n);
 		if(dist < nearestDist){
 			nearest = n; 
@@ -93,7 +86,7 @@ std::vector<Node*> rrt(World world, Point start, Point goalPoint){
 	Node* root = new Node(NULL, start);
 	nodes.push_back(root); 
 	while(1){
-		Node* sample = world.getNodeSample(20, goalPoint);
+		Node* sample = world.getNodeSample(500, goalPoint);
 		Node* nearest = nearestNeighbor(sample, nodes);
 		if(validTrajectory(sample, nearest, world)){
 			sample->parent = nearest;  
@@ -105,10 +98,75 @@ std::vector<Node*> rrt(World world, Point start, Point goalPoint){
 	}
 }
 
+//rrt* -> all nodes in neighboord consider the new sample as their parent
+//sample becomes their parent if total cost from root is reduced  
+void rewire(Node* sample, std::vector<Node*> neighborhood, World world){
+	for(Node* neighbor : neighborhood){
+		if(testDepth(neighbor, sample) < depth(neighbor)){
+			if(validTrajectory(sample, neighbor, world)){
+				neighbor->parent = sample; 
+			}
+		}
+	}
+}
+
+//return node in neighborhood where 
+//node gets parent of least cost from root 
+//TODO add collision check 
+Node* chooseParent(Node* sample, std::vector<Node*> neighborhood, std::vector<Node*> exploredNodes, World world){
+	if(neighborhood.size() == 0){
+		return nearestNeighbor(sample, exploredNodes);
+	}
+	Node* bestParent = neighborhood[0]; //Error? what is closest is collision
+	for( Node* neighbor : neighborhood){
+		if(testDepth(sample, neighbor) < testDepth(sample, bestParent)){
+				bestParent = neighbor; 
+		}
+	}
+	return bestParent; 
+}
+
+//O(n) distance search among all explored nodes to create vector of nodes within
+//given radius to sample. Only adds valid nodes?
+std::vector<Node*> getNeighborhood(Node* center, std::vector<Node*> exploredNodes, double searchRadius, World world){
+	std::vector<Node*> neighborhood; 
+	for(Node* n : exploredNodes){
+		if(distance(center, n) < searchRadius){
+			if(validTrajectory(center, n, world)){
+				neighborhood.push_back(n);
+			}
+		}
+	}
+	return neighborhood; 
+}
+
+//rrt with rewire step 
+std::vector<Node*> rrtstar(World world, Point start, Point goalPoint){
+	std::vector<Node*> nodes;
+	Node* root = new Node(NULL, start);
+	nodes.push_back(root); 
+	while(1){
+		Node* sample = world.getNodeSample(500, goalPoint);
+		std::vector<Node*> neighborhood = getNeighborhood(sample, nodes, 0.5, world);
+		Node* parent = chooseParent(sample, neighborhood, nodes, world);
+		if(validTrajectory(sample, parent, world)){
+			sample->parent = parent; 
+			rewire(sample, neighborhood, world);
+			nodes.push_back(sample);
+			if(sample->x == goalPoint.x && sample->y == goalPoint.y){
+				return nodes;
+			}
+		} 
+	}
+}
+
+
+//TODO: merge rrt and rrt star and simply modify the step involving choosing parent 
+//so anytime controller can run the same function until time
 //single goal path planning with simple RRT 
 std::vector<Node*> planner(World world, Point start, Point goal){
-	return rrt(world, start, goal);
-	//rrtstar(world, start, goal, root);
+	//return rrt(world, start, goal);
+	return rrtstar(world, start, goal);
 }
 
 //print solution trajectory: series of x y points preceeded by number of points in solution

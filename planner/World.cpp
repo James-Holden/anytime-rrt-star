@@ -38,7 +38,7 @@ Point World::getValidPoint(){
 
 //returns goal 1 in 20 times 
 Node* World::getNodeSample(int bias, Point goalPoint){
-	std::uniform_int_distribution<int> rand(0,20);
+	std::uniform_int_distribution<int> rand(0,bias);
 	int roll = rand(generator);
 	if(roll == bias){
 		return new Node(NULL, goalPoint);
