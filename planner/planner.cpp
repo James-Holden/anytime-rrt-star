@@ -14,25 +14,53 @@
 //DDA algorithm to check if line intersects blocked area 
 //returns true if clear, false if collision  
 bool validTrajectory(Node* nodeA, Node* nodeB, World world){
-	double dx = abs(nodeA->x - nodeB->y);
-	double dy = abs(nodeA->y - nodeB->y); 
-	// int steps = abs(dx) > abs(dy) ? abs(dx) : abs(dy);
-	int steps = 500;  
-	// calculate increment in x & y for each steps 
-	double Xinc = dx / (double) steps; 
-	double Yinc = dy / (double) steps; 
-	// Put pixel for each step 
-	double curX = nodeA->x;
-	double curY = nodeA->y; 
-	for( int i = 0; i <= steps; i++ ){ 
-		if(world.world[(int(curY)*world.width)+int(curX)] == '#'){
-			//std::cout << "COLLISON" << std::endl;
-			return 0; 
-		}
-		curX += Xinc;//increment in x at each step 
-		curY += Yinc;//increment in y at each step 
-	} 
-	return 1; 
+	// //std::cout << "validTrajectory()" << nodeA->x << ' ' << nodeA->y << " to " << nodeB->x << ' ' << nodeB->y << std::endl; 
+	// double dx = abs(nodeA->x - nodeB->x);
+	// double dy = abs(nodeA->y - nodeB->y); 
+	// // int steps = abs(dx) > abs(dy) ? abs(dx) : abs(dy);
+	// double steps = 500;  
+	// // calculate increment in x & y for each steps 
+	// double Xinc = dx / steps; 
+	// double Yinc = dy / steps; 
+	// // Put pixel for each step 
+	// double curX = nodeA->x;
+	// double curY = nodeA->y; 
+	// for( int i = 0; i <= steps; i++ ){ 
+	// 	if(world.world[(int(curY)*world.width)+int(curX)] == '#'){
+	// 		//std::cout << "COLLISON" << std::endl;
+	// 		return 0; 
+	// 	}
+	// 	curX += Xinc;//increment in x at each step 
+	// 	curY += Yinc;//increment in y at each step 
+	// } 
+	// return 1; 
+
+  double step,x,y;
+  double x1 = nodeA->x;
+  double y1 = nodeA->y;
+  double x2 = nodeB->x;
+  double y2 = nodeB->y; 
+  double dx = (x2 - x1);
+  double dy = (y2 - y1);
+  if(abs(dx) >= abs(dy))
+    step = abs(dx)*100;
+  else
+    step = abs(dy)*100;
+  dx = dx / step;
+  dy = dy / step;
+  x = x1;
+  y = y1;
+  int i = 1;
+  while(i <= step) {
+    x = x + dx;
+    y = y + dy;
+    i = i + 1;
+	if(world.world[(int(y)*world.width)+int(x)] == '#'){
+		//std::cout << "COLLISON" << std::endl;
+		return 0; 
+	}
+  }
+  return 1; 
 }
 
 //takes two nodes and returns 2d euclidean distance between them 

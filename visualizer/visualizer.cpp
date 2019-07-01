@@ -85,8 +85,8 @@ int main()
     std::vector<sf::VertexArray> soltuionLines;
     for (int i = 0; i < numSolutionPoints-1; i++)
     {
-        std::cout << '!' << solutionPointXs[i] << ' ' << solutionPointYs[i] << std::endl;
-        std::cout << '!' << solutionPointXs[i+1] << ' ' << solutionPointYs[i+1] << std::endl;
+        //std::cout << '!' << solutionPointXs[i] << ' ' << solutionPointYs[i] << std::endl;
+        //std::cout << '!' << solutionPointXs[i+1] << ' ' << solutionPointYs[i+1] << std::endl;
     
         sf::VertexArray line(sf::Lines, 2);
         line[0].position = sf::Vector2f(solutionPointXs[i]*50, solutionPointYs[i]*50);
@@ -116,7 +116,7 @@ int main()
         split = strtok(NULL, " ");
         double y2 = std::stod(split); 
 
-        std::cout << x1 << ' ' << y1 << ' ' << x2 << ' ' << y2 << std::endl;
+        //std::cout << x1 << ' ' << y1 << ' ' << x2 << ' ' << y2 << std::endl;
 
         sf::VertexArray line(sf::Lines, 2);
         line[0].position = sf::Vector2f(x1*50, y1*50);
