@@ -6,6 +6,7 @@
 #include <cmath>
 #include <math.h> 
 #include <algorithm> 
+#include <chrono>
 #include "Node.h"
 #include "Point.h"
 #include "World.h"
@@ -176,11 +177,15 @@ std::vector<Node*> getNeighborhood(Node* center, std::vector<Node*> exploredNode
 
 //RRT with optimization. Sample node chooses parent with of least cost from root 
 //Then all neighbors within a radius rewire considering sample as their parent 
-std::vector<Node*> rrtstar(World world, Point start, Point goalPoint){
+//time limit in milliseconds 
+std::vector<Node*> rrtstar(World world, Point start, Point goalPoint, int timeLimit){
 	std::vector<Node*> nodes;
 	Node* root = new Node(NULL, start);
-	nodes.push_back(root); 
-	while(1){
+	nodes.push_back(root);
+	std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+	std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
+	auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(now - begin).count();
+	while(duration < timeLimit){
 		reportScene(world, start, goalPoint, nodes);
 		Node* sample = world.getNodeSample(500, goalPoint);
 		std::vector<Node*> neighborhood = getNeighborhood(sample, nodes, 0.5, world);
@@ -189,17 +194,17 @@ std::vector<Node*> rrtstar(World world, Point start, Point goalPoint){
 			sample->parent = parent; 
 			rewire(sample, neighborhood, world);
 			nodes.push_back(sample);
-			if(sample->x == goalPoint.x && sample->y == goalPoint.y){
-				return nodes;
-			}
 		} 
+		now = std::chrono::steady_clock::now();
+		duration = std::chrono::duration_cast<std::chrono::milliseconds>(now - begin).count();
 	}
+	return nodes;
 }
 
 
 std::vector<Node*> planner(World world, Point start, Point goal){
 	//return rrt(world, start, goal);
-	return rrtstar(world, start, goal);
+	return rrtstar(world, start, goal, 1000);
 }
 
 

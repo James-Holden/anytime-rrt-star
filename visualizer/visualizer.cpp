@@ -138,7 +138,7 @@ void displayScene(sf::RenderWindow* window, int numRows, int numColumns){
         //    window->draw(line);
         //}
         window->display();
-        usleep(50000);
+        usleep(5000);
         return;
     }
 }
