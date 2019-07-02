@@ -10,6 +10,42 @@
 #include "Point.h"
 #include "World.h"
 
+//print solution trajectory: series of x y points preceeded by number of points in solution
+//last node is always goal, keep referring up and then reverse to be in order 
+void printSolution(std::vector<Node*> tree){
+	std::vector<Node*> solutionTrajectory;
+	Node* cur = tree.back(); 
+	tree.pop_back();//goal node is on the back 
+	while(cur->parent){
+		solutionTrajectory.push_back(cur);
+		cur = cur->parent;
+	}
+	std::reverse(solutionTrajectory.begin(), solutionTrajectory.end());
+	std::cout << solutionTrajectory.size()+1 << '\n';
+	std::cout << tree.front()->location.x << ' ' << tree.front()->y << std::endl;
+	for(Node* n : solutionTrajectory){
+		std::cout << n->x << ' ' << n->y << '\n';
+	}
+}
+
+//print entire explore tree in line segments: x1 y1 x2 y2 preceeded by number of lines 
+void printTree(std::vector<Node*> tree){
+	std::cout << tree.size()-1 << '\n'; 
+	for(Node* n : tree){
+		if(n->parent){ //root wont segfault
+			std::cout << n->x << ' ' << n->y << ' ' << n->parent->x << ' ' << n->parent->y << '\n';
+		}
+	}
+}
+
+void reportScene(World world, Point start, Point goal, std::vector<Node*> tree){
+	world.print(); 
+	std::cout << start.x << '\n' << start.y << std::endl;
+	std::cout << goal.x << '\n' << goal.y << std::endl;
+	if(tree.size()){
+		printTree(tree); 
+	}
+}
 
 //Uses DDA algorithm to check if line intersects blocked area
 //DDA (Digital Differential Analyzer) takes two points and calculates
@@ -43,14 +79,14 @@ bool validTrajectory(Node* nodeA, Node* nodeB, World world){
   return 1; 
 }
 
-//takes two nodes and returns 2d euclidean distance between them 
+//returns 2d euclidean distance between 2 nodes  
 double distance(Node* nodeA, Node* nodeB){
 	double diffX = nodeA->x - nodeB->x;
 	double diffY = nodeA->y - nodeB->y;
 	return hypot(diffX, diffY);
 }
 
-//calculates distance of a node from root 
+//calculates cost of a node from root 
 double depth(Node* node){
 	if(node->parent == NULL){
 		return 0.0; //root
@@ -58,13 +94,12 @@ double depth(Node* node){
 	return distance(node, node->parent) + depth(node->parent);
 }
 
-//calculates depth if a node if its parent was givenParent 
+//calculates depth of a node considering another as its parent
 double testDepth(Node* node, Node* givenParent){
 	return distance(node, givenParent) + depth(givenParent); 
 }
 
 //return the nearest existing node to a given node in the world 
-//simple euclidean distence per pythagorean theorm used by distance() 
 //O(n) compares all nodes and saves returns closest 
 Node* nearestNeighbor(Node* node, std::vector<Node*> exploredNodes){
 	Node* nearest;
@@ -86,7 +121,8 @@ std::vector<Node*> rrt(World world, Point start, Point goalPoint){
 	Node* root = new Node(NULL, start);
 	nodes.push_back(root); 
 	while(1){
-		Node* sample = world.getNodeSample(500, goalPoint);
+		reportScene(world, start, goalPoint, nodes);
+		Node* sample = world.getNodeSample(20, goalPoint);
 		Node* nearest = nearestNeighbor(sample, nodes);
 		if(validTrajectory(sample, nearest, world)){
 			sample->parent = nearest;  
@@ -98,7 +134,7 @@ std::vector<Node*> rrt(World world, Point start, Point goalPoint){
 	}
 }
 
-//rrt* -> all nodes in neighboord consider the new sample as their parent
+//All nodes in neighboord consider the new sample as their parent
 //sample becomes their parent if total cost from root is reduced  
 void rewire(Node* sample, std::vector<Node*> neighborhood, World world){
 	for(Node* neighbor : neighborhood){
@@ -110,14 +146,12 @@ void rewire(Node* sample, std::vector<Node*> neighborhood, World world){
 	}
 }
 
-//return node in neighborhood where 
-//node gets parent of least cost from root 
-//TODO add collision check 
+//return node in neighborhood where node gets parent of least cost from root 
 Node* chooseParent(Node* sample, std::vector<Node*> neighborhood, std::vector<Node*> exploredNodes, World world){
 	if(neighborhood.size() == 0){
 		return nearestNeighbor(sample, exploredNodes);
 	}
-	Node* bestParent = neighborhood[0]; //Error? what is closest is collision
+	Node* bestParent = neighborhood[0]; 
 	for( Node* neighbor : neighborhood){
 		if(testDepth(sample, neighbor) < testDepth(sample, bestParent)){
 				bestParent = neighbor; 
@@ -126,8 +160,8 @@ Node* chooseParent(Node* sample, std::vector<Node*> neighborhood, std::vector<No
 	return bestParent; 
 }
 
-//O(n) distance search among all explored nodes to create vector of nodes within
-//given radius to sample. Only adds valid nodes?
+//O(n) distance search among all explored nodes to create vector of valid nodes within
+//given radius to sample
 std::vector<Node*> getNeighborhood(Node* center, std::vector<Node*> exploredNodes, double searchRadius, World world){
 	std::vector<Node*> neighborhood; 
 	for(Node* n : exploredNodes){
@@ -140,12 +174,14 @@ std::vector<Node*> getNeighborhood(Node* center, std::vector<Node*> exploredNode
 	return neighborhood; 
 }
 
-//rrt with rewire step 
+//RRT with optimization. Sample node chooses parent with of least cost from root 
+//Then all neighbors within a radius rewire considering sample as their parent 
 std::vector<Node*> rrtstar(World world, Point start, Point goalPoint){
 	std::vector<Node*> nodes;
 	Node* root = new Node(NULL, start);
 	nodes.push_back(root); 
 	while(1){
+		reportScene(world, start, goalPoint, nodes);
 		Node* sample = world.getNodeSample(500, goalPoint);
 		std::vector<Node*> neighborhood = getNeighborhood(sample, nodes, 0.5, world);
 		Node* parent = chooseParent(sample, neighborhood, nodes, world);
@@ -161,41 +197,12 @@ std::vector<Node*> rrtstar(World world, Point start, Point goalPoint){
 }
 
 
-//TODO: merge rrt and rrt star and simply modify the step involving choosing parent 
-//so anytime controller can run the same function until time
-//single goal path planning with simple RRT 
 std::vector<Node*> planner(World world, Point start, Point goal){
 	//return rrt(world, start, goal);
 	return rrtstar(world, start, goal);
 }
 
-//print solution trajectory: series of x y points preceeded by number of points in solution
-//last node is always goal, keep referring up and then reverse to be in order 
-void printSolution(std::vector<Node*> tree){
-	std::vector<Node*> solutionTrajectory;
-	Node* cur = tree.back(); 
-	tree.pop_back();//goal node is on the back 
-	do{
-		solutionTrajectory.push_back(cur);
-		cur = cur->parent;
-	}while(cur->parent);
-	std::reverse(solutionTrajectory.begin(), solutionTrajectory.end());
-	std::cout << solutionTrajectory.size()+1 << '\n';
-	std::cout << tree.front()->location.x << ' ' << tree.front()->y << std::endl;
-	for(Node* n : solutionTrajectory){
-		std::cout << n->x << ' ' << n->y << '\n';
-	}
-}
 
-//print entire explore tree in line segments: x1 y1 x2 y2 preceeded by number of lines 
-void printTree(std::vector<Node*> tree){
-	std::cout << tree.size()-1 << '\n'; 
-	for(Node* n : tree){
-		if(n->parent){ //root wont segfault
-			std::cout << n->x << ' ' << n->y << ' ' << n->parent->x << ' ' << n->parent->y << '\n';
-		}
-	}
-}
 
 //planner takes world on stdin and performs planner 
 int main(int argc, char* argv[]){
@@ -216,19 +223,16 @@ int main(int argc, char* argv[]){
 		input.push_back(cur);
 	}
 
-
 	//setup for sampler
 	World world = World(input, numRows, numColumns);
 	Point start = world.getValidPoint();
 	Point goal = world.getValidPoint();
 
 	std::cout << world.width << '\n' << world.height << std::endl;
-	world.print(); 
-	std::cout << start.x << '\n' << start.y << std::endl;
-	std::cout << goal.x << '\n' << goal.y << std::endl;
-
+	
 	std::vector<Node*> tree = planner(world, start, goal);
-	printSolution(tree);
-	printTree(tree); 
+	
+	reportScene(world, start, goal, tree);
+	
 	return 0;
 }
