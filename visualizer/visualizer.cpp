@@ -111,16 +111,17 @@ void displayScene(sf::RenderWindow* window, int numRows, int numColumns){
     //create start/finish dots 
     sf::CircleShape startCircle(5);
     startCircle.setFillColor(sf::Color::Green);
-    startCircle.setPosition(sx*50-2.5, sy*50-2.5);
+    startCircle.setPosition(sx*50-5, sy*50-5);
     sf::CircleShape goalCircle(5);
     goalCircle.setFillColor(sf::Color::Red);
-    goalCircle.setPosition(gx*50-2.5, gy*50-2.5);
+    goalCircle.setPosition(gx*50-5, gy*50-5);
 
-    //std::vector<sf::VertexArray> solutionLines = buildSoltuionLines();
     std::vector<sf::VertexArray> exploredLines = buildExploredLines(); 
+    std::vector<sf::VertexArray> solutionLines = buildSoltuionLines();
     
     while (window->isOpen()){
         sf::Event event;
+
         while (window->pollEvent(event)){
             if (event.type == sf::Event::Closed)
                 window->close();
@@ -134,9 +135,9 @@ void displayScene(sf::RenderWindow* window, int numRows, int numColumns){
         for(sf::VertexArray line : exploredLines){
             window->draw(line); 
         }
-        //for(sf::VertexArray line : solutionLines){
-        //    window->draw(line);
-        //}
+        for(sf::VertexArray line : solutionLines){
+           window->draw(line);
+        }
         window->display();
         usleep(5000);
         return;
