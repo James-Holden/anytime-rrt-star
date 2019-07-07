@@ -11,9 +11,24 @@
 #include "Point.h"
 #include "World.h"
 
+//returns 2d euclidean distance between 2 nodes  
+double distance(Node* nodeA, Node* nodeB){
+	double diffX = nodeA->x - nodeB->x;
+	double diffY = nodeA->y - nodeB->y;
+	return hypot(diffX, diffY);
+}
+
+
+//calculates cost of a node from root 
+double depth(Node* node){
+	if(node->parent == NULL)
+		return 0.0; //root
+	return distance(node, node->parent) + depth(node->parent);
+}
+
 //print solution trajectory: series of x y points preceeded by number of points in solution
 //last node is always goal, keep referring up and then reverse to be in order 
-void printSolution(Node* foundSolutionNode, std::vector<Node*> tree){
+void printSolution(Node* foundSolutionNode, std::vector<Node*> tree, int64_t duration){
 	std::vector<Node*> solutionTrajectory;
 	Node* cur = foundSolutionNode; 
 	while(cur->parent){
@@ -22,9 +37,12 @@ void printSolution(Node* foundSolutionNode, std::vector<Node*> tree){
 	}
 	std::reverse(solutionTrajectory.begin(), solutionTrajectory.end());
 	std::cout << solutionTrajectory.size()+1 << '\n';
+	std::cout << duration << '\n';
+	std::cout << depth(foundSolutionNode) << '\n'; 
 	std::cout << cur->location.x << ' ' << cur->location.y << std::endl;
 	for(Node* n : solutionTrajectory)
 		std::cout << n->x << ' ' << n->y << '\n';
+	
 
 }
 
@@ -71,19 +89,6 @@ bool validTrajectory(Node* nodeA, Node* nodeB, World world){
   return 1; 
 }
 
-//returns 2d euclidean distance between 2 nodes  
-double distance(Node* nodeA, Node* nodeB){
-	double diffX = nodeA->x - nodeB->x;
-	double diffY = nodeA->y - nodeB->y;
-	return hypot(diffX, diffY);
-}
-
-//calculates cost of a node from root 
-double depth(Node* node){
-	if(node->parent == NULL)
-		return 0.0; //root
-	return distance(node, node->parent) + depth(node->parent);
-}
 
 //calculates depth of a node considering another as its parent
 double testDepth(Node* node, Node* givenParent){
@@ -163,7 +168,7 @@ std::vector<Node*> rrtstar(World world, Point start, Point goalPoint, int timeLi
 		now = std::chrono::steady_clock::now();
 		duration = std::chrono::duration_cast<std::chrono::milliseconds>(now - begin).count();
 		if(foundSolutionNode)
-			printSolution(foundSolutionNode, nodes); 
+			printSolution(foundSolutionNode, nodes, duration); 
 		else
 			std::cout << '0' << '\n';
 	}

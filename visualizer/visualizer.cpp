@@ -5,6 +5,9 @@
 #include <string.h>
 #include <tuple>
 #include <unistd.h>
+#include <fstream>
+
+int scaler = 75; //scale up size from model to graphics window
 
 std::vector<sf::RectangleShape> buildWorld(int numRows, int numColumns){
     std::vector<char> world; 
@@ -17,8 +20,8 @@ std::vector<sf::RectangleShape> buildWorld(int numRows, int numColumns){
     for(int i = 0; i < numColumns; i++){
         for(int j = 0; j < numRows; j++){
             if(world[j*numColumns+i] == '_'){
-                sf::RectangleShape rectangle(sf::Vector2f(50, 50));
-                rectangle.setPosition(i*50, j*50);
+                sf::RectangleShape rectangle(sf::Vector2f(scaler, scaler));
+                rectangle.setPosition(i*scaler, j*scaler);
                 rectangle.setFillColor(sf::Color::White);
                 blocks.push_back(rectangle);
             }
@@ -27,14 +30,22 @@ std::vector<sf::RectangleShape> buildWorld(int numRows, int numColumns){
     return blocks; 
 }
 
-std::vector<sf::VertexArray> buildSoltuionLines(){
+std::vector<sf::VertexArray> buildSoltuionLines(std::ostream* myfile){
     std::vector<double> solutionPointXs; 
     std::vector<double> solutionPointYs; 
     //parse solution lines 
-    std::vector<char[20]> points;  
+    char duration[20];  
+    char soltuionLength[20];  
+  
     char charSolutionPoints[10]; 
     std::cin.getline(charSolutionPoints, 10);
     int numSolutionPoints = std::stoi(charSolutionPoints); 
+    if(numSolutionPoints){
+        std::cin.getline(duration, 10);
+        std::cin.getline(soltuionLength, 10);
+        *myfile << duration << ',' << soltuionLength <<'\n';
+    }
+    
     for (int i = 0; i < numSolutionPoints; i++){
         char solutionPoint[20]; 
         std::cin.getline(solutionPoint, 20);
@@ -49,12 +60,13 @@ std::vector<sf::VertexArray> buildSoltuionLines(){
     std::vector<sf::VertexArray> soltuionLines;
     for (int i = 0; i < numSolutionPoints-1; i++){
         sf::VertexArray line(sf::Lines, 2);
-        line[0].position = sf::Vector2f(solutionPointXs[i]*50, solutionPointYs[i]*50);
+        line[0].position = sf::Vector2f(solutionPointXs[i]*scaler, solutionPointYs[i]*scaler);
         line[0].color = sf::Color::Black;
-        line[1].position = sf::Vector2f(solutionPointXs[i+1]*50, solutionPointYs[i+1]*50);
+        line[1].position = sf::Vector2f(solutionPointXs[i+1]*scaler, solutionPointYs[i+1]*scaler);
         line[1].color = sf::Color::Black;
         soltuionLines.push_back(line);
     }
+
     return soltuionLines; 
 }
 
@@ -78,9 +90,9 @@ std::vector<sf::VertexArray> buildExploredLines(){
         double y2 = std::stod(split); 
 
         sf::VertexArray line(sf::Lines, 2);
-        line[0].position = sf::Vector2f(x1*50, y1*50);
+        line[0].position = sf::Vector2f(x1*scaler, y1*scaler);
         line[0].color = sf::Color::Green;
-        line[1].position = sf::Vector2f(x2*50, y2*50);
+        line[1].position = sf::Vector2f(x2*scaler, y2*scaler);
         line[1].color = sf::Color::Green;
         exploredLines.push_back(line);
     }
@@ -88,7 +100,7 @@ std::vector<sf::VertexArray> buildExploredLines(){
 }
 
 
-void displayScene(sf::RenderWindow* window, int numRows, int numColumns){
+void displayScene(sf::RenderWindow* window, int numRows, int numColumns, std::ostream* myfile){
     
     //create world blocks 
     std::vector<sf::RectangleShape> blocks = buildWorld(numRows, numColumns); 
@@ -111,13 +123,13 @@ void displayScene(sf::RenderWindow* window, int numRows, int numColumns){
     //create start/finish dots 
     sf::CircleShape startCircle(5);
     startCircle.setFillColor(sf::Color::Green);
-    startCircle.setPosition(sx*50-5, sy*50-5);
+    startCircle.setPosition(sx*scaler-5, sy*scaler-5);
     sf::CircleShape goalCircle(5);
     goalCircle.setFillColor(sf::Color::Red);
-    goalCircle.setPosition(gx*50-5, gy*50-5);
+    goalCircle.setPosition(gx*scaler-5, gy*scaler-5);
 
     std::vector<sf::VertexArray> exploredLines = buildExploredLines(); 
-    std::vector<sf::VertexArray> solutionLines = buildSoltuionLines();
+    std::vector<sf::VertexArray> solutionLines = buildSoltuionLines(myfile);
     
     while (window->isOpen()){
         sf::Event event;
@@ -139,12 +151,15 @@ void displayScene(sf::RenderWindow* window, int numRows, int numColumns){
            window->draw(line);
         }
         window->display();
-        usleep(5000);
+        usleep(1000);
         return;
     }
 }
 
 int main(){
+
+    std::ofstream myfile;
+    myfile.open ("results.csv");
 
     //header info  
 	char width[10];
@@ -154,9 +169,17 @@ int main(){
 	int numColumns = std::stoi(width);
 	int numRows = std::stoi(height);
 
-    sf::RenderWindow window(sf::VideoMode(numColumns*50, numRows*50), "RRT Visualizer");
+    sf::RenderWindow window(sf::VideoMode(numColumns*scaler, numRows*scaler), "RRT Visualizer");
     while(std::cin){
-        displayScene(&window, numRows, numColumns);
+        //try
+        // {
+        displayScene(&window, numRows, numColumns, &myfile);
+        // }
+        // catch(const std::exception& e)
+        // {
+        //     //std::cerr << e.what() << '\n';
+        // }
+        
     }
 
     return 0;
